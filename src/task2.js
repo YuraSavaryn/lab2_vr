@@ -3,10 +3,10 @@ import * as THREE from "three"
 import { ARButton } from "three/addons/webxr/ARButton.js"
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-let camera, scene, renderer, furnitureModel;
+let camera, scene, renderer, model;
 
 init();
-renderLoop();
+animate();
 
 function init() {
     const container = document.createElement('div');
@@ -19,38 +19,43 @@ function init() {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.xr.enabled = true; // Активація підтримки XR [cite: 55, 190]
+    renderer.xr.enabled = true; 
     container.appendChild(renderer.domElement);
 
-    // Додаємо освітлення, щоб модель меблів була видимою [cite: 133, 175]
-    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-    light.position.set(0.5, 1, 0.25);
+    // Світло для золотого матеріалу
+    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2);
     scene.add(light);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+    directionalLight.position.set(5, 5, 5);
+    scene.add(directionalLight);
+
+    // Посилання на модель
+    const modelUrl = 'https://raw.githubusercontent.com/YuraSavaryn/lab2_vr/refs/heads/master/public/scene.gltf';
 
     const loader = new GLTFLoader();
-    // ЗАМІНІТЬ НА ВАШЕ RAW ПОСИЛАННЯ З GITHUB [cite: 434]
-    const modelPath = 'https://raw.githubusercontent.com/YuraSavaryn/lab2_vr/refs/heads/master/public/scene.gltf'; 
-
     loader.load(
-        modelPath,
+        modelUrl,
         (gltf) => {
-            furnitureModel = gltf.scene;
+            model = gltf.scene;
+
+            // АВТО-МАСШТАБУВАННЯ: Робимо модель розміром 0.5 метра
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3()).length();
+            const scale = 0.5 / size;
+            model.scale.set(scale, scale, scale);
+
+            // ПОЗИЦІЯ: 1.5 метра від камери, трохи нижче рівня очей
+            model.position.set(0, -0.2, -1); 
             
-            // Налаштування масштабу та позиції (1.5 метра від камери) [cite: 377, 472]
-            furnitureModel.scale.set(0.5, 0.5, 0.5); 
-            furnitureModel.position.set(0, 0, -1.5); 
-            
-            scene.add(furnitureModel);
-            console.log("Модель успішно завантажена");
+            scene.add(model);
+            console.log("Модель додана!");
         },
-        (xhr) => {
-            console.log((xhr.loaded / xhr.total * 100) + '% завантажено');
-        },
-        (error) => {
-            console.error('Помилка завантаження моделі:', error);
-        }
+        undefined,
+        (error) => console.error("Помилка завантаження:", error)
     );
 
+    // Додаємо кнопку (вона знову з'явиться)
     document.body.appendChild(ARButton.createButton(renderer));
 
     window.addEventListener('resize', onWindowResize, false);
@@ -62,14 +67,13 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function renderLoop() {
-    renderer.setAnimationLoop(render); // Запуск циклу рендерингу WebXR [cite: 196, 217]
+function animate() {
+    renderer.setAnimationLoop(render);
 }
 
 function render() {
-    if (furnitureModel) {
-        // Додаємо базову анімацію обертання [cite: 376, 411]
-        furnitureModel.rotation.y += 0.01;
+    if (model) {
+        model.rotation.y += 0.01; // Обертання для демонстрації
     }
     renderer.render(scene, camera);
 }
